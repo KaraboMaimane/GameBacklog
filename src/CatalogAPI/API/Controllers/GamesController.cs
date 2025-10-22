@@ -2,7 +2,7 @@ using CatalogAPI.Application.Contracts;
 using CatalogAPI.Domain;
 using Microsoft.AspNetCore.Mvc;
 
-namespace CatalogAPI.Controllers;
+namespace CatalogAPI.API.Controllers;
 
 /// <summary>
 /// API Controller for managing the game backlog.
@@ -102,7 +102,7 @@ public class GamesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    async Task<IActionResult> UpdateGame(int id, Game gameToUpdate)
+    public async Task<IActionResult> UpdateGame(int id, Game gameToUpdate)
     {
         if (id != gameToUpdate.Id)
         {
@@ -123,12 +123,19 @@ public class GamesController : ControllerBase
         return NoContent();
     }
 
-    [HttpDelete("{id}")]
-    async Task<IActionResult> DeleteGame(int id)
+    [HttpDelete("{id:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteGame(int id)
     {
         var gameToDelete = await _repository.GetByIdAsync(id);
         if (gameToDelete == null) return NotFound();
-        await _repository.DeleteAsync(gameToDelete.Id);
-        return Ok();
+        
+        // Pass the *entity* to be deleted. No second query.
+        await _repository.DeleteAsync(gameToDelete);
+        
+        // WHY NoContent: Like PUT, a successful DELETE returns
+        // an HTTP 204 No Content. We're just confirming it's gone.
+        return NoContent();
     }
 }

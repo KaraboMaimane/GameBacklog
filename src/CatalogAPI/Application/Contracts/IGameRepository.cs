@@ -52,5 +52,5 @@ public interface IGameRepository
     /// <param name="game">The game object to update.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     Task UpdateAsync(Game game);
-    Task DeleteAsync(int id);
+    Task DeleteAsync(Game game);
 }

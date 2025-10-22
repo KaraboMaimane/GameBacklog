@@ -46,17 +46,18 @@ public class GameRepository : IGameRepository
         return game;
     }
 
-    public async Task DeleteAsync(int id)
+    /// <summary>
+    /// Deletes a game entity.
+    ///
+    /// WHY: This implementation is simpler. It trusts that the
+    /// entity passed to it is valid and tracked (or attachable).
+    /// We simply mark it for deletion and save. No extra lookup.
+    /// </summary>
+    /// <param name="game">The game entity to delete.</param>
+    public async Task DeleteAsync(Game game)
     {
-        var gameToDelete = await _context.Games.FindAsync(id);
-        if (gameToDelete != null)
-        {
-            _context.Games.Remove(gameToDelete);
-            await _context.SaveChangesAsync();
-        }
-        // Note: We might want to throw a NotFoundException here
-        // if gameToDelete is null. We'll add better error
-        // handling in a later milestone.
+        _context.Games.Remove(game);
+        await _context.SaveChangesAsync();
     }
 
     public async Task<IReadOnlyList<Game>> GetAllAsync()

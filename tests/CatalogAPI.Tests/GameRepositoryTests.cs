@@ -107,4 +107,30 @@ public class GameRepositoryTests
         //Assert
         foundGame.Should().BeNull();
     }
+    
+    [Fact]
+    public async Task DeleteAsync_WithExistingGame_ShouldRemoveGameFromContext()
+    {
+        // Arrange
+        var game = new Game
+        {
+            Title = "Stray",
+            Genre = "Adventure",
+            DateAdded = DateTime.UtcNow
+        };
+        await _repository.AddAsync(game);
+
+        // Sanity check: ensure it's in the context
+        var gameInDb = await _context.Games.FindAsync(game.Id);
+        gameInDb.Should().NotBeNull();
+
+        // Act
+        // We pass the *entity* we just added
+        await _repository.DeleteAsync(game);
+
+        // Assert
+        // Check the context directly to see if it's gone
+        var deleteGameInDb = await _context.Games.FindAsync(game.Id);
+        deleteGameInDb.Should().BeNull();
+    }
 }

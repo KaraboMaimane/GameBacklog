@@ -20,7 +20,7 @@ namespace CatalogAPI.Controllers
     [ApiController]
     public class GamesController : ControllerBase
     {
-        private IGameRepository _repository; 
+        private IGameRepository _repository;
 
         // WHY: Constructor Injection. The ASP.NET Core DI container finds the registered service
         //      (IGameRepository, which we set to DummyGameRepository in Program.cs) and passes it
@@ -47,8 +47,37 @@ namespace CatalogAPI.Controllers
             // ALTERNATIVES CONSIDERED: Returning just 'IEnumerable<Game>'. Rejected because it removes
             //      the ability to return non-200 status codes (like 404 or 500) with proper formatting.
             // LEARNING GOAL: Master the use of ActionResult<T> and its role in Web API response negotiation.
-            var gamesList = await _repository.GetAllGamesAsync(); 
-            return Ok(gamesList); 
+            var gamesList = await _repository.GetAllGamesAsync();
+            return Ok(gamesList);
+        }
+        /// <summary>
+        /// Retrieves a specific game by its unique identifier.
+        /// </summary>
+        /// <param name="id">The unique identifier of the game.</param>
+        /// <returns>The requested Game object with 200 OK, or 404 Not Found.</returns>
+        [HttpGet("{id}")]
+        [ProducesResponseType(typeof(Game), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<Game>> GetGameById(Guid id)
+        {
+            // WHY: ActionResult<Game> is used here because we might return a 200 (Game object)
+            //      or a 404 (no object), which is standard RESTful API design.
+            // TRADE-OFFS (PRO): Clear API contract (200 for success, 404 for resource not found).
+            // TRADE-OFFS (CON): Requires two branches in the code (check for null).
+            // ALTERNATIVES CONSIDERED: Throwing an exception and letting middleware handle it. Rejected
+            //      for simple resource-not-found as explicitly returning 404 is cleaner and expected.
+            // LEARNING GOAL: Master conditional status code returns (200 vs 404).
+            var game = await _repository.GetGameByIdAsync(id);
+
+            if (game == null)
+            {
+                // WHY: Returning NotFound() immediately signals to the client that the requested
+                //      resource does not exist, which is HTTP Status Code 404. This is REST standard.
+                return NotFound();
+            }
+
+            // Returns an Http 200 OK response with the game object
+            return Ok(game);
         }
     }
 }

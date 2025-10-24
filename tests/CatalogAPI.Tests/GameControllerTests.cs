@@ -92,8 +92,50 @@ public class GameControllerTests
         Assert.Empty(actualGames!);
     }
 
-    // Key Notes:
-    // You sort of explained why these unit tests are implemented. Maybe I need to rest my brain for today because Im lost with the thought process as to the how we do this and why 
-    // Im still very confused by these unit testing terms like your asserts and how we know if empty or is type etc. 
-    // Also the naming convetions for the test cases. I also get confused as to how would I know what to test against or what test cases to create. 
+    [Fact]
+    public async Task GetGameById_ReturnsOkWithCorrectGame()
+    {
+        // ARRANGE: Set up the scenario
+        var expectedGame = new Game { Id = Guid.NewGuid(), Title = "ID Test Game", Status = GameStatus.Playing };
+
+        // Moq Setup: When the controller asks for this specific ID, return the expected game.
+        _mockRepo.Setup(repo => repo.GetGameByIdAsync(expectedGame.Id))
+            .ReturnsAsync(expectedGame);
+
+        // ACT: Call the method with the expected ID
+        var result = await _controller.GetGameById(expectedGame.Id);
+
+        // ASSERT: Verify the outcome is 200 OK and the contet is correct. 
+        Assert.IsType<OkObjectResult>(result.Result);
+
+        var okResult = result.Result as OkObjectResult;
+        var actualGame = okResult?.Value as Game;
+
+        //Verify the core logic: the ID of the returned game matches the requested ID
+        Assert.Equal(expectedGame.Id, actualGame?.Id);
+
+        // Verify the mock was called exactly once with the correct ID.
+        _mockRepo.Verify(repo => repo.GetGameByIdAsync(expectedGame.Id), Times.Once());
+    }
+
+    [Fact]
+    public async Task GetGameById_ReturnsNotFound_WhenIdDoesNotExist()
+    {
+        // ARRANGE: Set up the scenario
+        var nonExistentId = Guid.NewGuid();
+
+        //Moq Setup: When the controller asks for ANY GUID, return null (Game not found)
+        // We use It.IsAny<Guid>() to ensure that the mock sorks for any ID that we pass
+        _mockRepo.Setup(repo => repo.GetGameByIdAsync(It.IsAny<Guid>())).ReturnsAsync((Game?)null); // Crucially, we mock the return of a null Game object
+
+        // ACT: Call tthe method with the non-existent ID
+        var result = await _controller.GetGameById(nonExistentId);
+
+        // ASSERT: Verify the outcome is 404 Not Found.
+        // WHY: The controller's job is to translate the repository's 'null' into an HTTP 404
+        Assert.IsType<NotFoundResult>(result.Result);
+
+        // Ensure no game object was returned in the result value (it shouldn't even be checked).
+        Assert.Null(result.Value);
+    }
 }

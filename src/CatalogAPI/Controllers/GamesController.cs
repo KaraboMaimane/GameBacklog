@@ -97,6 +97,14 @@ namespace CatalogAPI.Controllers
             //      stops execution and returns a 400 Bad Request *before* our code runs.
             //      This is a massive win for security and clean code.
 
+            if (!ModelState.IsValid)
+            {
+                // This is where the framework would have stopped the request and formatted
+                // the error details into a BadRequestObjectResult for us. We simulate it
+                // by returning the same result type the framework provides.
+                return BadRequest(ModelState);
+            }
+
             // 1. MAPPING: Convert the DTO (API contract) to the Domain Model (internal logic)
             // WHY: This is the "boilerplate" cost of using DTOs. We must manually map
             //      the fields. Later, we can use a tool like AutoMapper to automate this.

@@ -12,6 +12,7 @@
 //      by injecting the abstraction (interface) and not the concrete implementation.
 using CatalogAPI.Domain;
 using CatalogAPI.Interfaces;
+using CatalogAPI.Dtos;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CatalogAPI.Controllers
@@ -78,6 +79,47 @@ namespace CatalogAPI.Controllers
 
             // Returns an Http 200 OK response with the game object
             return Ok(game);
+        }
+
+        /// <summary>
+        /// Creates a new game in the backlog.
+        /// </summary>
+        /// <param name="createGameDto">The DTO containing data for the new game.</param>
+        /// <returns>A 201 Created response with the new game's location, or 400 Bad Request.</returns>
+        [HttpPost]
+        [ProducesResponseType(typeof(Game), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<Game>> CreateGame(CreateGameDto createGameDto)
+        {
+            // WHY: ASP.NET Core automatically performs Model Validation on the 'createGameDto'
+            //      because of the [ApiController] attribute on our controller.
+            //      If 'Title' is missing (or any [Required] field), the framework *automatically*
+            //      stops execution and returns a 400 Bad Request *before* our code runs.
+            //      This is a massive win for security and clean code.
+
+            // 1. MAPPING: Convert the DTO (API contract) to the Domain Model (internal logic)
+            // WHY: This is the "boilerplate" cost of using DTOs. We must manually map
+            //      the fields. Later, we can use a tool like AutoMapper to automate this.
+            // LEARNING GOAL: Understand the mapping step is where we translate external
+            //      data into our trusted internal domain model.
+            var game = new Game
+            {
+                // ID is *not* set here. It will be set by the repository/database.
+                Title = createGameDto.Title,
+                Platform = createGameDto.Platform,
+                Status = createGameDto.Status
+            };
+
+            // 2. REPOSITORY CALL: Pass the *domain model* to the repository.
+            await _repository.AddGameAsync(game);
+
+            // 3. HTTP RESPONSE: Return the standard RESTful response for creation.
+            // WHY: A POST that successfully creates a resource *must* return a 201 Created.
+            //      CreatedAtAction is the standard helper for this. It generates:
+            //      a) An HTTP 201 Status Code.
+            //      b) A 'Location' header in the response (e.g., /api/games/{new-guid})
+            //      c) The newly created 'game' object in the response body.
+            return CreatedAtAction(nameof(GetGameById), new { id = game.Id }, game);
         }
     }
 }

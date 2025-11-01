@@ -28,8 +28,18 @@ namespace CatalogAPI.Services
         // We will implement all CRUD when we move to the Controller. For now, we only need GET.
         public Task AddGameAsync(Game game)
         {
-            game.Id = Guid.NewGuid();
+            // WHY: In a real database, the ID would be set by the DB (e.g., auto-increment)
+            //      or by the application logic *before* insertion. Since this is a dummy
+            //      repo, we simulate this by creating a new Guid here.
+            //      This ensures the object in our list has a unique ID.
+            if (game.Id == Guid.Empty)
+            {
+                game.Id = Guid.NewGuid();
+            }
             _games.Add(game);
+            
+            // WHY: Task.CompletedTask is used for async methods that don't have
+            //      any real I/O to await, fulfilling the async contract without blocking.
             return Task.CompletedTask;
         }
 

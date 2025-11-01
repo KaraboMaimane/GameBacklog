@@ -20,6 +20,9 @@ using CatalogAPI.Domain;
 using CatalogAPI.Interfaces;
 using CatalogAPI.Controllers;
 using System.Linq;
+using CatalogAPI.Dtos;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Http;
 
 namespace CatalogAPI.Tests;
 
@@ -137,5 +140,78 @@ public class GameControllerTests
 
         // Ensure no game object was returned in the result value (it shouldn't even be checked).
         Assert.Null(result.Value);
+    }
+
+    // --- Test Case 5: Happy Path (Resource Created) ---
+    [Fact]
+    public async Task CreatedGame_returnCreated_WithCorrrectLocationHeader()
+    {
+        // Arrange: Set up the scenario
+        var newGameDto = new CreateGameDto
+        {
+            Title = "New Test Game",
+            Platform = GamePlatform.PC,
+            Status = GameStatus.Planned
+        };
+
+        // We need to create a specific Guid to mock the return data and verify the Location header.
+        var createdGameId = Guid.NewGuid();
+
+        // Moq Setup 1: Define what the AddGameAsync call should do.
+        //Since AddGameAsync is 'fire and forget' (return Task), we dont need a Setup for the return value.
+
+
+        // Moq Setup 2: We must mock the repository to ensure the domain model recieves and ID
+        // after the AddGameAsync call, which is necessary fo the CreatedAtAciont location header.
+        // We use Callback() to modify the 'game' object passed to the repository.
+        _mockRepo.Setup(repo => repo.AddGameAsync(It.IsAny<Game>()))
+            .Callback<Game>(game => game.Id = createdGameId)
+            .Returns(Task.CompletedTask);
+
+        // ACT: Call the method wit hthe valid DTO.
+        var result = await _controller.CreateGame(newGameDto);
+
+        // ASSERT: Verify the outcome.
+
+        // 1. Verify the HTTP response type is 201 Created.
+        Assert.IsType<CreatedAtActionResult>(result.Result);
+
+        var createdResult = result.Result as CreatedAtActionResult;
+
+        // 2. Verify the location header poits to the correct action and ID.
+        Assert.Equal(nameof(GamesController.GetGameById), createdResult?.ActionName);
+        Assert.Equal(createdGameId, (createdResult?.RouteValues?["id"]));
+
+        // 3. Verify the mock AddGameAsync was called exactly once.
+        _mockRepo.Verify(repo => repo.AddGameAsync(It.IsAny<Game>()), Times.Once());
+    }
+
+    [Fact]
+    public async Task CreateGame_ReturnsBadRequest_WhenModelIsInvalid()
+    {
+        // ARRANGE: Set up the scenario
+        var invalidDto = new CreateGameDto
+        {
+            Title = new string('A', 101), // Fails [StringLength(100)] validation
+            Platform = GamePlatform.PC,
+            Status = GameStatus.Planned
+        };
+
+        // CRITICAL STEP: Manually fore the controller's ModelState to be invalid
+        // WHY: In production, the framework does this automatically. In a unit test,
+        //      we must simulate the failure for the [ApiController] attribute to work.
+        _controller.ModelState.AddModelError("Title", "Title must not exceed 100 characters");
+        
+        // ACT: Call the method with the invalid DTO.
+        var result = await _controller.CreateGame(invalidDto);
+
+        // ASSERT: Verify the outcome is 400 Bad Request.
+        // Use a cast to ControllerBase to check the status code directly
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        // We verify the status code of the result is 400
+        Assert.Equal(StatusCodes.Status400BadRequest, badRequestResult.StatusCode);
+
+        // Verify the repository was NEVER called
+        _mockRepo.Verify(repo => repo.AddGameAsync(It.IsAny<Game>()), Times.Never());
     }
 }

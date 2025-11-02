@@ -6,14 +6,30 @@
 // ALTERNATIVES CONSIDERED: Manually instantiating the repository in the controller. Rejected as it
 //      violates DIP and makes the code untestable and tightly coupled.
 // LEARNING GOAL: Master service registration and the Scoped lifetime.
+using CatalogAPI.Persistence;
+using Npgsql;
 using CatalogAPI.Interfaces;
 using CatalogAPI.Services;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
 // --- CORE ENGINEERING DECISION: DEPENDENCY INJECTION REGISTRATION ---
+
+// STEP 1: Register the DbContext
+// WHY: We use AddDbContext<T> and configure it to use Npgsql (the PostgreSQL provider).
+//      We pull the connection string from the configuration file we just created.
+//      The DbContext is registered with a SCOPED lifetime automatically by EF Core, 
+//      which enforces our transactional isolation principle.
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+// Note: Ensure the connection string is not null before proceeding in production!
+// We assume it's valid for this development step.
+
+builder.Services.AddDbContext<GameDbContext>(options => options.UseNpgsql(connectionString));
+
 // The AddScoped lifetime is chosen here for transactional integrity (Rule 5).
 builder.Services.AddScoped<IGameRepository, DummyGameRepository>();
 // -------------------------------------------------------------------

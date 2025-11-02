@@ -31,7 +31,12 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<GameDbContext>(options => options.UseNpgsql(connectionString));
 
 // The AddScoped lifetime is chosen here for transactional integrity (Rule 5).
-builder.Services.AddScoped<IGameRepository, DummyGameRepository>();
+// STEP 2: Register the IGameRepository - THE GREAT SWAP!
+// WHY: We are swapping the concrete implementation. Because the controller depends only on IGameRepository, 
+//      no other code needs to change. This validates the Dependency Inversion Principle.
+// Trade-Off: We must now ensure the database is running for the application to function.
+// builder.Services.AddScoped<IGameRepository, DummyGameRepository>(); // REMOVE THIS LINE
+builder.Services.AddScoped<IGameRepository, EfCoreGameRepository>();
 // -------------------------------------------------------------------
 
 // IMPORTANT: AddControllers is required for ASP.NET Core MVC controllers to be recognized!

@@ -1,0 +1,23 @@
+# WHY: Defines the version of the Docker Compose file format.
+version: '3.8'
+
+services:
+  # WHY: This is our development database container. We use PostgreSQL because it's robust,
+  #      open-source, and commonly used in production environments.
+  postgresdb:
+    image: postgres:16-alpine # Using the lightweigh Alpine image for speed.
+    restart: always
+    ports:
+      - "5432:5432" # Maps the container to prt 5432 to the host port 5432.
+    environment:
+      # CRITICAL: These environment variable configure the database instance.
+      # We use a simple dev password for local testing.
+      POSTGRES_USER: "postgres_user"
+      POSTGRES_PASSWORD: "secret_password"
+      POSTGREST_DB: "catalogdb" # The database name our API will connect to.
+    volumes:
+      # WHY: Ensures the database data persists even if the container is stopped and restarted
+      - postgres_data:/var/lib/postgres/data
+volumes:
+  # WHY: Defines the local volume used to persist the database data
+  postgres_data:

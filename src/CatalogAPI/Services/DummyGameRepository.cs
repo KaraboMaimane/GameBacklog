@@ -48,6 +48,7 @@ namespace CatalogAPI.Services
             var existingGame = _games.FirstOrDefault(g => g.Id == game.Id);
             if (existingGame == null)
             {
+                // CRITICAL: Returns false if not found, allowing the controller to return 404.
                 return Task.FromResult(false);
             }
 
@@ -59,7 +60,9 @@ namespace CatalogAPI.Services
 
           public Task<bool> DeleteGameAsync(Guid id)
         {
+            // List.RemoveAll returns the count of items removed.
             var rowsAffected = _games.RemoveAll(g => g.Id == id);
+            // CRITICAL: Returns true if rows were affected, false otherwise (allowing controller 404).
             return Task.FromResult(rowsAffected > 0);
         }
     }

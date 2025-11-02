@@ -201,7 +201,7 @@ public class GameControllerTests
         // WHY: In production, the framework does this automatically. In a unit test,
         //      we must simulate the failure for the [ApiController] attribute to work.
         _controller.ModelState.AddModelError("Title", "Title must not exceed 100 characters");
-        
+
         // ACT: Call the method with the invalid DTO.
         var result = await _controller.CreateGame(invalidDto);
 
@@ -213,5 +213,91 @@ public class GameControllerTests
 
         // Verify the repository was NEVER called
         _mockRepo.Verify(repo => repo.AddGameAsync(It.IsAny<Game>()), Times.Never());
+    }
+
+    // --- Test Case 7: PUT Happy Path ---
+    [Fact]
+    public async Task UpdateGame_ReturnsOkWithUpdatedGame()
+    {
+        // ARRANGE
+        var existingId = Guid.NewGuid();
+        var updateDto = new CreateGameDto { Title = "Updated Title", Platform = GamePlatform.XboxSeries, Status = GameStatus.Playing };
+
+        // Moq Setup: Simulate a successful update (UpdatedGameAsync returns true)
+        _mockRepo.Setup(repo => repo.UpdateGameAsync(It.Is<Game>(g => g.Id == existingId))).ReturnsAsync(true);
+
+        // ACT
+        var result = await _controller.UpdateGame(existingId, updateDto);
+
+        // ASSERT
+        // 1. Verify response is 200 OK.
+        Assert.IsType<OkObjectResult>(result.Result);
+
+        var okResult = result.Result as OkObjectResult;
+        var updatedGame = Assert.IsType<Game>(okResult?.Value);
+
+        // 2. Verify the model returned contains the new updated title.
+        Assert.Equal(updateDto.Title, updatedGame.Title);
+
+        // 3. Verify the correct updated method was called once.
+        _mockRepo.Verify(repo => repo.UpdateGameAsync(It.IsAny<Game>()), Times.Once());
+    }
+
+    // --- Test Case 8: PUT Failure Path (404) ---
+    [Fact]
+    public async Task UpdateGame_ReturnsNotFound_WhenIdDoesNotExist()
+    {
+        // ARRANGE
+        var nonExistentId = Guid.NewGuid();
+        var updateDto = new CreateGameDto { Title = "Ghost Game", Platform = GamePlatform.PC, Status = GameStatus.Playing };
+
+        // Moq Setup: Simulate failure to find the resource (UpdateGameAsync return false).
+        _mockRepo.Setup(repo => repo.UpdateGameAsync(It.IsAny<Game>())).ReturnsAsync(false);
+
+        // ACT
+        var result = await _controller.UpdateGame(nonExistentId, updateDto);
+
+        // ASSERT
+        // 1. Verify response is 404 Not found.
+        Assert.IsType<NotFoundResult>(result.Result);
+    }
+
+    // --- Test Case 9: DELETE Happy Path ---
+    [Fact]
+    public async Task DeleteGame_ReturnsNoContent_OnSuccess()
+    {
+        // ARRANGE
+        var idToDelete = Guid.NewGuid();
+
+        // Moq Setup: Simulate successfull deletion (DeleteGameAsync returns true)
+        _mockRepo.Setup(repo => repo.DeleteGameAsync(idToDelete)).ReturnsAsync(true);
+
+        // ACT
+        var result = await _controller.DeleteGame(idToDelete);
+
+        // ASSERT
+        // 1. Verify response is 204 No content.
+        Assert.IsType<NoContentResult>(result);
+
+        // 2. Verify the correct delete method was called once
+        _mockRepo.Verify(repo => repo.DeleteGameAsync(idToDelete), Times.Once());
+    }
+
+    // --- Test Case 10: DELETE Failure Path (404) ---
+    [Fact]
+    public async Task DeleteGame_ReturnsNotFound_WhenIdDoesNotExist()
+    {
+        // ARRANGE
+        var nonExistentId = Guid.NewGuid();
+
+        // Moq Setup: Simulate failure to find the resource (DeleteGameAsync return false)
+        _mockRepo.Setup(repo => repo.DeleteGameAsync(It.IsAny<Guid>())).ReturnsAsync(false);
+
+        // ACT
+        var result = await _controller.DeleteGame(nonExistentId);
+
+        // ASSERT
+        // 1. Verify response is 404 not found.
+        Assert.IsType<NotFoundResult>(result);
     }
 }

@@ -129,5 +129,74 @@ namespace CatalogAPI.Controllers
             //      c) The newly created 'game' object in the response body.
             return CreatedAtAction(nameof(GetGameById), new { id = game.Id }, game);
         }
+
+        /// <summary>
+        /// Updates an existing game entry.
+        /// </summary>
+        /// <param name="id">The unique identifier of the game to update.</param>
+        /// <param name="updateGameDto">The DTO containing updated data.</param>
+        /// <returns>200 OK if successful, 400 Bad Request if invalid input, 404 Not Found if ID does not exist.</returns>
+        [HttpPut("{id}")]
+        [ProducesResponseType(typeof(Game), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<Game>> UpdateGame(Guid id, CreateGameDto updateGameDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            // 1. MAPPING: Create a full Game model, ensuring we use the ID from the route.
+            // WHY: The client sends the ID in the URL, not the body (DTO). We merge them here.
+            var gameToUpdate = new Game
+            {
+                Id = id,
+                Title = updateGameDto.Title,
+                Platform = updateGameDto.Platform,
+                Status = updateGameDto.Status
+            };
+
+            // 2. REPOSITORY CALL: Attempt to update the resource.
+            var success = await _repository.UpdateGameAsync(gameToUpdate);
+
+            // 3. HTTP RESPONSE: Check the outcome of the repository call.
+            // WHY: UpdateGameAsync returns false if the resource was not found. This translates to 404.
+            if (!success)
+            {
+                return NotFound();
+            }
+
+            // WHY: A successful PUT operation typically returns 200 OK along with the updated resource.
+            return Ok(gameToUpdate);
+        }
+
+
+        /// <summary>
+        /// Deletes a specific game entry by ID.
+        /// </summary>
+        /// <param name="id">The unique identifier of the game to delete.</param>
+        /// <returns>204 No Content if successful, 404 Not Found if ID does not exist.</returns>
+        [HttpDelete("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> DeleteGame(Guid id) // Note: IActionResult is used as we return no content.
+        {
+            // WHY: No DTO or ModelState check is needed for DELETE, only the ID from the route.
+
+            // 1. REPOSITORY CALL: Attempt to delete the resource.
+            var success = await _repository.DeleteGameAsync(id);
+
+            // 2. HTTP Response: Check the outcome
+            if (!success)
+            {
+                // The resource does not exist for us to delete.
+                return NotFound();
+            }
+            
+            // WHY: The standard REST response for a successful DELETE is 204 No Content.
+            //      We use IActionResult (instead of ActionResult<T>) because there is no object (T) returned.
+            return NoContent();
+        } 
     }
 }
